@@ -2,38 +2,61 @@
 #include <cstdio>
 #include <cmath>
 #include <limits.h>
+#include <vector>
+
+using namespace std;
 
 int calc_dist(int i, int n);
 int total_dist();
 void nearest_neighbor();
 
-struct coordinate {
+int **dist;
+
+struct edge_t;
+
+struct node_t {
 	float x;
 	float y;
+	int id;
+	edge_t* e1;
+	edge_t* e2;
+
+	node_t(int _id) : id(_id) { };
+};
+
+struct edge_t {
+	node_t* n1;
+	node_t* n2;
+
+	edge_t(node_t* node1, node_t* node2) : n1(node1), n2(node2) { };
+
+	int cost() {
+		return dist[n1->id][n2->id];
+	}
 };
 
 int num_points;
 
-coordinate * points;
+vector<node_t> nodes;
+vector<edge_t> edges;
 
 
 
-int **dist;
-int *tour;
 
 int main() {
+
 	if(scanf("%i", &num_points)!=1) {
 		printf("Invalid input\n");
 		exit(1);
 	}
-	points = new coordinate[num_points];
-	tour = new int[num_points];
 
 	for(int i = 0; i < num_points; ++i) {
-		if(scanf("%f %f", &points[i].x, &points[i].y)!=2) {
+		node_t node(i);
+		if(scanf("%f %f", &node.x, &node.y)!=2) {
 			printf("Invalid input\n");
 			exit(1);
 		}
+		nodes.push_back(node);
 	}	
 
 	//Calculate distances and do nearest neigbor
@@ -56,9 +79,9 @@ int main() {
 	}
 
 	//nearest neighbor
-	tour[0] = 0;
 	visited[0] = 1;
-	for(int i = 0; i < num_points-1; ++i) {	
+	int cur_node = 0;
+	for(int i = 0; i < num_points; ++i) {	
 		float nn_dist = INT_MAX;
 		int nn = -1;
 		for(int n = 0; n < num_points; ++n) {
@@ -67,29 +90,37 @@ int main() {
 				nn = n;
 			}
 		}
-		tour[i+1] = nn;
-		visited[nn] = 1;
+		if(nn!=-1) {
+			edges.push_back(edge_t(&nodes[cur_node], &nodes[nn]));
+			nodes[cur_node].e2 = &edges.back();
+			nodes[nn].e1 = &edges.back();
+			cur_node = nn;
+			visited[nn] = 1;
+		} else {
+			edges.push_back(edge_t(&nodes[cur_node], &nodes[0]));
+			nodes[cur_node].e2 = &edges.back();
+			nodes[0].e1 = &edges.back();
+		}
 	}
+
 
 	//Perform opts
 
 	//Output
-
-	for(int i = 0; i < num_points; ++i) {
-		printf("%i\n", tour[i]);
-	}
-
+	
 	fprintf(stderr, "Dist: %i\n", total_dist());
 }
 
 int calc_dist(int p1, int p2) {
-	return (int)round(sqrt(pow(points[p1].x-points[p2].x,2)+pow(points[p1].y-points[p2].y,2)));
+	return (int)round(sqrt(pow(nodes[p1].x-nodes[p2].x,2)+pow(nodes[p1].y-nodes[p2].y,2)));
 }
 
 int total_dist() {
-	int sum = dist[tour[num_points-1]][tour[0]];
-	for(int i=1; i < num_points; ++i) {
-		sum+=dist[tour[i-1]][tour[i]];	
-	}
+	int sum = 0;
+	vector<edge_t>::iterator it;
+	for(it = edges.begin(); it != edges.end(); ++it ) {
+		fprintf(stderr,"e: %i <-> %i\n", it->n1->id, it->n2->id); 
+		sum+=it->cost();
+	}	
 	return sum;
 }
