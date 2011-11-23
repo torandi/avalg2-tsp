@@ -25,14 +25,28 @@ struct node_t {
 
 struct edge_t {
 	node_t* n[2];
+	bool out;
 
 	edge_t(node_t* node1, node_t* node2) {
 		n[0] = node1;
 		n[1] = node2;
+		out = 1;
 	}
 
 	int cost() {
 		return dist[n[0]->id][n[1]->id];
+	}
+
+	void print() {
+		fprintf(stderr,"e: %i -> %i\n", start_node()->id, end_node()->id); 
+	}
+
+	node_t * &start_node() {
+		return n[!out];
+	}
+
+	node_t * &end_node() {
+		return n[out];
 	}
 };
 
@@ -104,11 +118,11 @@ int main() {
 		}
 	}
 
-
 	//Perform opts
 
 	//Output
-	
+
+
 	fprintf(stderr, "Dist: %i\n", total_dist());
 }
 
@@ -120,7 +134,7 @@ int total_dist() {
 	int sum = 0;
 	vector<edge_t>::iterator it;
 	for(it = edges.begin(); it != edges.end(); ++it ) {
-		fprintf(stderr,"e: %i <-> %i\n", it->n[0]->id, it->n[1]->id); 
+		it->print();
 		sum+=it->cost();
 	}	
 	return sum;
