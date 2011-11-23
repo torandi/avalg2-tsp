@@ -48,6 +48,10 @@ struct edge_t {
 	node_t * &end_node() {
 		return n[out];
 	}
+
+	void swap_direction() {
+		out = !out;
+	}
 };
 
 int num_points;
