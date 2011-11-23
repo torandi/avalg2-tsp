@@ -21,6 +21,14 @@ struct node_t {
 	edge_t* e[2];
 
 	node_t(int _id) : id(_id) { };
+
+	edge_t * out_edge(edge_t * in) {
+		if(in == e[0]) {
+			return e[1];
+		} else {
+			return e[0];
+		}
+	}
 };
 
 struct edge_t {
@@ -126,6 +134,7 @@ int main() {
 
 	//Output
 
+	vector<edge_t>::iterator it;
 
 	fprintf(stderr, "Dist: %i\n", total_dist());
 }
