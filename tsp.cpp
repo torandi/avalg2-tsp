@@ -18,20 +18,21 @@ struct node_t {
 	float x;
 	float y;
 	int id;
-	edge_t* e1;
-	edge_t* e2;
+	edge_t* e[2];
 
 	node_t(int _id) : id(_id) { };
 };
 
 struct edge_t {
-	node_t* n1;
-	node_t* n2;
+	node_t* n[2];
 
-	edge_t(node_t* node1, node_t* node2) : n1(node1), n2(node2) { };
+	edge_t(node_t* node1, node_t* node2) {
+		n[0] = node1;
+		n[1] = node2;
+	}
 
 	int cost() {
-		return dist[n1->id][n2->id];
+		return dist[n[0]->id][n[1]->id];
 	}
 };
 
@@ -92,14 +93,14 @@ int main() {
 		}
 		if(nn!=-1) {
 			edges.push_back(edge_t(&nodes[cur_node], &nodes[nn]));
-			nodes[cur_node].e2 = &edges.back();
-			nodes[nn].e1 = &edges.back();
+			nodes[cur_node].e[1] = &edges.back();
+			nodes[nn].e[0] = &edges.back();
 			cur_node = nn;
 			visited[nn] = 1;
 		} else {
 			edges.push_back(edge_t(&nodes[cur_node], &nodes[0]));
-			nodes[cur_node].e2 = &edges.back();
-			nodes[0].e1 = &edges.back();
+			nodes[cur_node].e[1] = &edges.back();
+			nodes[0].e[0] = &edges.back();
 		}
 	}
 
@@ -119,7 +120,7 @@ int total_dist() {
 	int sum = 0;
 	vector<edge_t>::iterator it;
 	for(it = edges.begin(); it != edges.end(); ++it ) {
-		fprintf(stderr,"e: %i <-> %i\n", it->n1->id, it->n2->id); 
+		fprintf(stderr,"e: %i <-> %i\n", it->n[0]->id, it->n[1]->id); 
 		sum+=it->cost();
 	}	
 	return sum;
