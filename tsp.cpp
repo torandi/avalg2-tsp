@@ -143,3 +143,29 @@ int total_dist() {
 	}	
 	return sum;
 }
+
+void two_opt(){
+
+	edge_t t1 = edges.at[1];
+	edge_t t2 = edges.at[2];
+
+	int old_cost = t1.cost() + t2.cost();
+
+
+	/**
+	* Swap nodes 
+	*/
+	node_t* tmp = t1.n[t1.end_node()];
+	t1.n[e1.end_node()] = t2.n[t2.start_node()];
+	t2.n[e2.start_node()] = tmp;
+
+	/**
+	* Cycle through nodes until t2 is reached.
+	*/
+	edge_t curr_edge = t2.n[t2.end_node()];
+	while(curedge != t2){
+
+
+	}
+
+}
