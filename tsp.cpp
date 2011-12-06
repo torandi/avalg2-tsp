@@ -6,6 +6,9 @@
 #include <limits.h>
 #include <vector>
 
+#define SAFE 1
+#define DEBUG 1
+
 using namespace std;
 
 int calc_dist(int i, int n);
@@ -13,7 +16,9 @@ int total_dist();
 void nearest_neighbor();
 bool two_opt(int e1, int e2);
 bool check_path();
-void print_edges();
+#if DEBUG
+   void print_edges();
+#endif
 
 int **dist;
 
@@ -39,13 +44,34 @@ struct node_t {
 
 	node_t(int _id) : id(_id) { };
 
+   /*
+    * Returns the edge that one would use to continue a traversing from this node
+    * given that one entered on edge in. 
+    */
 	edge_t * out_edge(edge_t * in) {
 		if(in == e[1]) {
 			return e[0];
 		} else {
+         #if SAFE
+            assert(in == e[0]);
+         #endif
 			return e[1];
 		}
-	}
+	};
+
+   /*
+    * Perform edge change, replaces org_edge with new_edge
+    */
+   void change_edge(edge_t * org_edge, edge_t * new_edge) {
+      if(e[0] == org_edge) {
+         e[0] = new_edge;
+      } else {
+         #if SAFE
+            assert(org_edge == e[1]) ;
+         #endif
+         e[1] = new_edge;
+      }
+   }
 };
 
 
@@ -157,10 +183,13 @@ int main() {
 		int e1, e2;
 		e1 = rand() % edges.size();
 		e2 = rand() % edges.size();
-		two_opt(e1, e2);
-      print_edges();
-		assert(check_path());
+		if(two_opt(e1, e2)) {
+         print_edges();
+         assert(check_path());
+      }
 	}
+   
+   fprintf(stderr, "2opt ended\n");
 
 	//Output
 /*
@@ -185,8 +214,10 @@ int main() {
 		edge_t * next_edge = current_node->out_edge(last_edge);
 		current_node = next_edge->end_node();
 	} while(current_node != nodes[0]);
-
-	fprintf(stderr, "Dist: %i\n", total_dist());
+   
+   #if DEBUG
+      fprintf(stderr, "Dist: %i\n", total_dist());
+   #endif
 }
 
 int calc_dist(int p1, int p2) {
@@ -206,28 +237,36 @@ bool check_path() {
 	bool * visited = new bool[num_points];
 	memset(visited, 0, num_points*sizeof(bool));
 	edge_t * cur_edge = edges[0];
-	fprintf(stderr,"-------------------------\n");
+   #if DEBUG
+      fprintf(stderr,"-------------------------\n");
+   #endif
 	for(;!visited[cur_edge->start_node()->id] && cur_edge->end_node() != edges[0]->start_node(); cur_edge = cur_edge->next()) {
 		visited[cur_edge->start_node()->id] = true;
-		cur_edge->print();
+      #if DEBUG
+         cur_edge->print();
+      #endif
 	}
-	cur_edge->print();
-	fprintf(stderr, "v: %d, en==sn = %d\n", visited[cur_edge->start_node()->id], cur_edge->end_node() == edges[0]->start_node());
 	bool full_path = (cur_edge->end_node() == edges[0]->start_node());
-	if(full_path)
-		fprintf(stderr,"-----------correct-------\n");
-	else 
-		fprintf(stderr,"---------incorrect-------\n");
+   #if DEBUG
+      cur_edge->print();
+      fprintf(stderr, "v: %d, en==sn = %d\n", visited[cur_edge->start_node()->id], cur_edge->end_node() == edges[0]->start_node());
+      if(full_path)
+         fprintf(stderr,"-----------correct-------\n");
+      else 
+         fprintf(stderr,"---------incorrect-------\n");
+   #endif
 
 	return full_path;
 }
 
+#if DEBUG
 void print_edges() {
 	fprintf(stderr, "Edges: \n");
 	for(vector<edge_t*>::iterator it=edges.begin(); it!=edges.end();++it) {
 		(*it)->print();
 	}
 }
+#endif
 
 bool two_opt(int e1, int e2) {
 
@@ -246,25 +285,27 @@ bool two_opt(int e1, int e2) {
 	edge_t *t1n = new edge_t(t1->start_node(), t2->start_node());
 	edge_t *t2n = new edge_t(t1->end_node(), t2->end_node());
 
-	fprintf(stderr,"Swap edges from: { \n");
-	t1->print(false);
-	fprintf(stderr,", ");
-	t2->print(false);
-	fprintf(stderr,"}");
 
 	int new_cost = (t1n->cost()+t2n->cost());
 	if(old_cost <= new_cost) {
-		fprintf(stderr," - NOPE: +%d\n", new_cost-old_cost);
+      delete t1n;
+      delete t2n;
 		return false;
 	}
-	fprintf(stderr," - Better: -%d\n",old_cost-new_cost);
+   #if DEBUG
+      fprintf(stderr,"Swap edges from: { \n");
+      t1->print(false);
+      fprintf(stderr,", ");
+      t2->print(false);
+      fprintf(stderr,"}\n");
+      fprintf(stderr, "to: edges: {");
+      t1n->print(false);
+      fprintf(stderr,", ");
+      t2n->print(false);
+      fprintf(stderr,"}\n");
 
-   fprintf(stderr, "New edges: {");
-	t1n->print(false);
-	fprintf(stderr,", ");
-	t2n->print(false);
-	fprintf(stderr,"}\n");
-
+      fprintf(stderr,"Improvment: %d\n",old_cost-new_cost);
+   #endif
 
 	/**
 	* Cycle through nodes until end node is  t2->end_node() 
@@ -274,17 +315,28 @@ bool two_opt(int e1, int e2) {
 	while(next_edge->end_node() != t2->end_node()) {
       cur_edge = next_edge;
       next_edge = cur_edge->next();
-      fprintf(stderr, "Swap edge ");
-      cur_edge->print();
+      #if DEBUG
+         fprintf(stderr, "Swap edge ");
+         cur_edge->print();
+      #endif
 		cur_edge->swap_direction();
 	}
 
 	//Perform the real swap and delete the old edges
-	t1->start_node() = t1n->start_node();
-	t1->end_node() = t1n->end_node();
+   /*
+    * What we do is to move the end of t1 to the start of t2
+    * and then move the start of t2 to the end of t1
+    */
 
+   //Swap edge pointers in nodes
+   t1->end_node()->change_edge(t1, t2);
+   t2->start_node()->change_edge(t2, t1);
+
+   //Swap nodes in edges
+	t1->end_node() = t1n->end_node();
 	t2->start_node() = t2n->start_node();
-	t2->end_node() = t2n->end_node();
+
+
 
 	delete t1n;
 	delete t2n;
