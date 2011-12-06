@@ -7,7 +7,12 @@
 #include <vector>
 
 #define SAFE 1
-#define DEBUG 1
+#define EXTREME_DEBUG 0
+#define DEBUG 0
+
+#define MAX_2OPT_TRIES 1000000
+#define MAX_SUCC_2OPT 10000
+
 
 using namespace std;
 
@@ -174,22 +179,31 @@ int main() {
 		}
 	}
 
-   print_edges();
-	assert(check_path());
+   #if EXTREME_DEBUG
+      print_edges();
+   #endif 
+   #if SAFE
+	   assert(check_path());
+   #endif
 
 	//Perform opts
-	
-	for(int i=0;i<1000;++i) {
+
+   int succ = 0; //Number of actual 2opts
+	for(int i=0;i<MAX_2OPT_TRIES && succ < MAX_SUCC_2OPT;++i) {
 		int e1, e2;
 		e1 = rand() % edges.size();
 		e2 = rand() % edges.size();
 		if(two_opt(e1, e2)) {
-         print_edges();
-         assert(check_path());
+         ++succ;
+         #if EXTREME_DEBUG
+            print_edges();
+         #endif
+         #if SAFE
+            assert(check_path());
+         #endif
       }
 	}
-   
-   fprintf(stderr, "2opt ended\n");
+  
 
 	//Output
 /*
@@ -205,49 +219,38 @@ int main() {
 		fprintf(stderr," }\n");
 	}*/
 
-	node_t* current_node = nodes[0];
-	edge_t* last_edge = NULL;
-	if(current_node->out_edge(last_edge)->end_node() == nodes[0]) {
-		last_edge = current_node->out_edge(last_edge);
+	edge_t* cur_edge = edges[0];
+   printf("%d\n", cur_edge->start_node()->id);
+   int sum = 0;
+	for(; cur_edge->end_node() != edges[0]->start_node(); cur_edge = cur_edge->next()) {
+      sum += cur_edge->cost();
+      printf("%d\n", cur_edge->end_node()->id);
 	}
-	do {
-		edge_t * next_edge = current_node->out_edge(last_edge);
-		current_node = next_edge->end_node();
-	} while(current_node != nodes[0]);
+   sum += cur_edge->cost(); //Add the last one
    
-   #if DEBUG
-      fprintf(stderr, "Dist: %i\n", total_dist());
-   #endif
+   fprintf(stderr, "#remaining 2opts: %d\n", MAX_SUCC_2OPT-succ);
+   fprintf(stderr, "Dist: %i\n", sum);
 }
 
 int calc_dist(int p1, int p2) {
 	return (int)round(sqrt(pow(nodes[p1]->x-nodes[p2]->x,2)+pow(nodes[p1]->y-nodes[p2]->y,2)));
 }
 
-int total_dist() {
-	int sum = 0;
-	vector<edge_t*>::iterator it;
-	for(it = edges.begin(); it != edges.end(); ++it ) {
-		sum+=(*it)->cost();
-	}	
-	return sum;
-}
-
 bool check_path() {
 	bool * visited = new bool[num_points];
 	memset(visited, 0, num_points*sizeof(bool));
 	edge_t * cur_edge = edges[0];
-   #if DEBUG
+   #if EXTREME_DEBUG
       fprintf(stderr,"-------------------------\n");
    #endif
 	for(;!visited[cur_edge->start_node()->id] && cur_edge->end_node() != edges[0]->start_node(); cur_edge = cur_edge->next()) {
 		visited[cur_edge->start_node()->id] = true;
-      #if DEBUG
+      #if EXTREME_DEBUG
          cur_edge->print();
       #endif
 	}
 	bool full_path = (cur_edge->end_node() == edges[0]->start_node());
-   #if DEBUG
+   #if EXTREME_DEBUG
       cur_edge->print();
       fprintf(stderr, "v: %d, en==sn = %d\n", visited[cur_edge->start_node()->id], cur_edge->end_node() == edges[0]->start_node());
       if(full_path)
@@ -315,7 +318,7 @@ bool two_opt(int e1, int e2) {
 	while(next_edge->end_node() != t2->end_node()) {
       cur_edge = next_edge;
       next_edge = cur_edge->next();
-      #if DEBUG
+      #if EXTREME_DEBUG
          fprintf(stderr, "Swap edge ");
          cur_edge->print();
       #endif
