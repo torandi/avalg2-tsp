@@ -11,7 +11,7 @@
 #define EXTREME_DEBUG 0
 #define DEBUG 0
 
-#define TIME_LIMIT 1.4 * CLOCKS_PER_SEC
+#define TIME_LIMIT 1.45 * CLOCKS_PER_SEC
 
 using namespace std;
 
@@ -31,6 +31,8 @@ struct node_t;
 struct edge_t {
 	node_t* n[2];
 	bool out;
+   bool changed;
+   int _cost;
 	edge_t(node_t* node1, node_t* node2);
 	int cost();
 	void print(bool newline=true);
@@ -83,10 +85,15 @@ edge_t::edge_t(node_t* node1, node_t* node2) {
 	n[0] = node1;
 	n[1] = node2;
 	out = 1;
+   changed = true;
 }
 
 int edge_t::cost() {
-	return dist[n[0]->id][n[1]->id];
+   if(changed) {
+      _dist = dist[n[0]->id][n[1]->id];
+      changed = false;
+   }
+   return _dist;
 }
 
 void edge_t::print(bool newline) {
@@ -292,9 +299,6 @@ bool two_opt(int e1, int e2) {
    edge_t * cur_edge = NULL;
 	edge_t * next_edge = t1->next();
 
-   if(clock() >= TIME_LIMIT)
-      return false; //Emergency exit!
-
 	while(next_edge->end_node() != t2->end_node()) {
       cur_edge = next_edge;
       next_edge = cur_edge->next();
@@ -319,7 +323,11 @@ bool two_opt(int e1, int e2) {
 	t1->end_node() = t1n->end_node();
 	t2->start_node() = t2n->start_node();
 
+   //Mark changed
+   t1->changed = true;
+   t2->changed = true;
 
+   //delete tmp variables
 
 	delete t1n;
 	delete t2n;
