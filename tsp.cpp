@@ -11,7 +11,7 @@
 #define EXTREME_DEBUG 0
 #define DEBUG 0
 
-#define TIME_LIMIT 1.45 * CLOCKS_PER_SEC
+#define TIME_LIMIT 1.4 * CLOCKS_PER_SEC
 
 using namespace std;
 
@@ -90,10 +90,10 @@ edge_t::edge_t(node_t* node1, node_t* node2) {
 
 int edge_t::cost() {
    if(changed) {
-      _dist = dist[n[0]->id][n[1]->id];
+      _cost = dist[n[0]->id][n[1]->id];
       changed = false;
    }
-   return _dist;
+   return _cost;
 }
 
 void edge_t::print(bool newline) {
