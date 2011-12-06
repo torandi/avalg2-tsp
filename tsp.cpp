@@ -5,14 +5,13 @@
 #include <cassert>
 #include <limits.h>
 #include <vector>
+#include <ctime>
 
-#define SAFE 1
+#define SAFE 0
 #define EXTREME_DEBUG 0
 #define DEBUG 0
 
-#define MAX_2OPT_TRIES 2000000
-#define MAX_SUCC_2OPT 15000
-
+#define TIME_LIMIT 1.4 * CLOCKS_PER_SEC
 
 using namespace std;
 
@@ -186,38 +185,15 @@ int main() {
 	   assert(check_path());
    #endif
 
-	//Perform opts
-
-   int succ = 0; //Number of actual 2opts
-	for(int i=0;i<MAX_2OPT_TRIES && succ < MAX_SUCC_2OPT;++i) {
-		int e1, e2;
-		e1 = rand() % edges.size();
-		e2 = rand() % edges.size();
-		if(two_opt(e1, e2)) {
-         ++succ;
-         #if EXTREME_DEBUG
-            print_edges();
-         #endif
-         #if SAFE
-            assert(check_path());
-         #endif
+   do {
+      for(int e1=0; e1<edges.size(); ++e1) {
+         for(int e2 = 0; e2 < edges.size(); ++e2) {
+            two_opt(e1, e2);
+         }
       }
-	}
-  
+   } while(clock() < TIME_LIMIT);
 
 	//Output
-/*
-	for(vector<node_t*>::iterator it=nodes.begin(); it!=nodes.end() ; ++it) {
-		fprintf(stderr,"{ ");
-		if((*it)->e[0] != NULL) {
-			(*it)->e[0]->print(false);
-		}
-		fprintf(stderr," , ");
-		if((*it)->e[1] != NULL) {
-			(*it)->e[1]->print(false);
-		}
-		fprintf(stderr," }\n");
-	}*/
 
 	edge_t* cur_edge = edges[0];
    printf("%d\n", cur_edge->start_node()->id);
@@ -228,7 +204,6 @@ int main() {
 	}
    sum += cur_edge->cost(); //Add the last one
    
-   fprintf(stderr, "#remaining 2opts: %d\n", MAX_SUCC_2OPT-succ);
    fprintf(stderr, "Dist: %i\n", sum);
 }
 
@@ -277,7 +252,8 @@ bool two_opt(int e1, int e2) {
 	edge_t *t2 = edges[e2];
 
 	if(t1->start_node() == t2->start_node() || t1->end_node() == t2->end_node()) 
-		return false; //Don't opt, edges have common node
+       //Don't opt, edges have common node
+		return true;
 
 	int old_cost = t1->cost() + t2->cost();
 
@@ -293,7 +269,7 @@ bool two_opt(int e1, int e2) {
 	if(old_cost <= new_cost) {
       delete t1n;
       delete t2n;
-		return false;
+		return true;
 	}
    #if DEBUG
       fprintf(stderr,"Swap edges from: { \n");
@@ -315,6 +291,10 @@ bool two_opt(int e1, int e2) {
 	*/
    edge_t * cur_edge = NULL;
 	edge_t * next_edge = t1->next();
+
+   if(clock() >= TIME_LIMIT)
+      return false; //Emergency exit!
+
 	while(next_edge->end_node() != t2->end_node()) {
       cur_edge = next_edge;
       next_edge = cur_edge->next();
