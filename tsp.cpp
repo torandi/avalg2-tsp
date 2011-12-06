@@ -13,6 +13,7 @@ int total_dist();
 void nearest_neighbor();
 bool two_opt(int e1, int e2);
 bool check_path();
+void print_edges();
 
 int **dist;
 
@@ -147,6 +148,7 @@ int main() {
 		}
 	}
 
+   print_edges();
 	assert(check_path());
 
 	//Perform opts
@@ -156,6 +158,7 @@ int main() {
 		e1 = rand() % edges.size();
 		e2 = rand() % edges.size();
 		two_opt(e1, e2);
+      print_edges();
 		assert(check_path());
 	}
 
@@ -218,13 +221,13 @@ bool check_path() {
 
 	return full_path;
 }
-/*
+
 void print_edges() {
 	fprintf(stderr, "Edges: \n");
-	for(vector<edge_t*>::iterator it=edges.begin(); ++it) {
+	for(vector<edge_t*>::iterator it=edges.begin(); it!=edges.end();++it) {
 		(*it)->print();
 	}
-}*/
+}
 
 bool two_opt(int e1, int e2) {
 
@@ -256,11 +259,23 @@ bool two_opt(int e1, int e2) {
 	}
 	fprintf(stderr," - Better: -%d\n",old_cost-new_cost);
 
+   fprintf(stderr, "New edges: {");
+	t1n->print(false);
+	fprintf(stderr,", ");
+	t2n->print(false);
+	fprintf(stderr,"}\n");
+
+
 	/**
 	* Cycle through nodes until end node is  t2->end_node() 
 	*/
-	edge_t * cur_edge = t1->next();
-	for(;cur_edge->end_node() != t2->end_node(); cur_edge = cur_edge->next()) {
+   edge_t * cur_edge = NULL;
+	edge_t * next_edge = t1->next();
+	while(next_edge->end_node() != t2->end_node()) {
+      cur_edge = next_edge;
+      next_edge = cur_edge->next();
+      fprintf(stderr, "Swap edge ");
+      cur_edge->print();
 		cur_edge->swap_direction();
 	}
 
