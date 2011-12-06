@@ -1,5 +1,5 @@
 #LDFLAGS=
-CXXFLAGS=-O2 -g
+CXXFLAGS=-g -pg
 
 all: tsp
 

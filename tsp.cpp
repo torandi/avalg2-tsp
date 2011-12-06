@@ -10,8 +10,8 @@
 #define EXTREME_DEBUG 0
 #define DEBUG 0
 
-#define MAX_2OPT_TRIES 1000000
-#define MAX_SUCC_2OPT 10000
+#define MAX_2OPT_TRIES 2000000
+#define MAX_SUCC_2OPT 15000
 
 
 using namespace std;
