@@ -12,8 +12,8 @@
 //#include "render.h"
 
 #define SAFE 0
-#define EXTREME_DEBUG 1
-#define DEBUG 1
+#define EXTREME_DEBUG 0
+#define DEBUG 0
 
 #define TIME_LIMIT 1.2 * CLOCKS_PER_SEC
 
@@ -36,7 +36,34 @@ int num_points;
    void print_edges();
 #endif
 
-#include "tsp.h"
+struct node_t;
+
+struct edge_t {
+	node_t* n[2];
+	bool out;
+   bool changed;
+   int _cost;
+	edge_t(node_t* node1, node_t* node2);
+	int cost();
+	void print(bool newline=true);
+	node_t * &start_node();
+	node_t * &end_node();
+	void swap_direction();
+	edge_t * next();
+};
+
+struct node_t {
+	float x;
+	float y;
+	int id;
+	edge_t* e[2];
+
+	node_t(const node_t &n);
+	node_t(int _id);
+	edge_t * out_edge(edge_t * in);
+   void change_edge(edge_t * org_edge, edge_t * new_edge);
+
+};
 
 edge_t::edge_t(node_t* node1, node_t* node2) {
 	n[0] = node1;
@@ -161,6 +188,10 @@ int main() {
 	//find the convex hull
 	int M = graham_scan();
 
+#if DEBUG
+	fprintf(stderr,"Graham scan complete\n");
+#endif
+
 	list<node_t*> remaining;
 
 	 min_dist  = new int[nodes.size()];
@@ -229,7 +260,7 @@ int main() {
    #if SAFE
 	   assert(check_path());
    #endif
-
+/*
    do {
       for(int e1=0; e1<edges.size(); ++e1) {
          for(int e2 = 0; e2 < edges.size(); ++e2) {
@@ -237,7 +268,7 @@ int main() {
          }
       }
    } while(clock() < TIME_LIMIT);
-
+*/
 	//Output
 
 	edge_t* cur_edge = edges[0];
@@ -425,6 +456,7 @@ int graham_scan() {
 				tmp = nodes[M-1];
 				nodes[M-1] = nodes[i];
 				nodes[i] = tmp;
+				++i;
 			} else {
 				--M;
 			}
