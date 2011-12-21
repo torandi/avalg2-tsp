@@ -15,7 +15,7 @@
 #define EXTREME_DEBUG 1
 #define DEBUG 1
 
-#define TIME_LIMIT 1.4 * CLOCKS_PER_SEC
+#define TIME_LIMIT 1.2 * CLOCKS_PER_SEC
 
 using namespace std;
 
@@ -297,7 +297,7 @@ bool two_opt(int e1, int e2) {
 	edge_t *t1 = edges[e1];
 	edge_t *t2 = edges[e2];
 
-	if(t1->start_node() == t2->start_node() || t1->end_node() == t2->end_node()) 
+	if(t1->start_node() == t2->end_node() || t1->end_node() == t2->start_node()) 
        //Don't opt, edges have common node
 		return true;
 
