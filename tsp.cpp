@@ -5,11 +5,15 @@
 #include <cassert>
 #include <limits.h>
 #include <vector>
+#include <list>
 #include <ctime>
+#include <algorithm>
+
+//#include "render.h"
 
 #define SAFE 0
-#define EXTREME_DEBUG 0
-#define DEBUG 0
+#define EXTREME_DEBUG 1
+#define DEBUG 1
 
 #define TIME_LIMIT 1.4 * CLOCKS_PER_SEC
 
@@ -20,66 +24,19 @@ int total_dist();
 void nearest_neighbor();
 bool two_opt(int e1, int e2);
 bool check_path();
+int graham_scan();
+
+int **dist;
+int *min_dist;
+
+int num_points;
+
+
 #if DEBUG
    void print_edges();
 #endif
 
-int **dist;
-
-struct node_t;
-
-struct edge_t {
-	node_t* n[2];
-	bool out;
-   bool changed;
-   int _cost;
-	edge_t(node_t* node1, node_t* node2);
-	int cost();
-	void print(bool newline=true);
-	node_t * &start_node();
-	node_t * &end_node();
-	void swap_direction();
-	edge_t * next();
-};
-
-struct node_t {
-	float x;
-	float y;
-	int id;
-	edge_t* e[2];
-
-	node_t(int _id) : id(_id) { };
-
-   /*
-    * Returns the edge that one would use to continue a traversing from this node
-    * given that one entered on edge in. 
-    */
-	edge_t * out_edge(edge_t * in) {
-		if(in == e[1]) {
-			return e[0];
-		} else {
-         #if SAFE
-            assert(in == e[0]);
-         #endif
-			return e[1];
-		}
-	};
-
-   /*
-    * Perform edge change, replaces org_edge with new_edge
-    */
-   void change_edge(edge_t * org_edge, edge_t * new_edge) {
-      if(e[0] == org_edge) {
-         e[0] = new_edge;
-      } else {
-         #if SAFE
-            assert(org_edge == e[1]) ;
-         #endif
-         e[1] = new_edge;
-      }
-   }
-};
-
+#include "tsp.h"
 
 edge_t::edge_t(node_t* node1, node_t* node2) {
 	n[0] = node1;
@@ -120,7 +77,45 @@ edge_t * edge_t::next() {
 	return end_node()->out_edge(this);
 }
 
-int num_points;
+node_t::node_t(const node_t &n) {
+	printf("copy %i\n", n.id);
+	id = n.id;
+	e[0] = n.e[0];
+	e[1] = n.e[1];
+	x = n.x;
+	y = n.y;
+}
+
+node_t::node_t(int _id) : id(_id) { };
+
+/*
+ * Returns the edge that one would use to continue a traversing from this node
+ * given that one entered on edge in. 
+ */
+edge_t * node_t::out_edge(edge_t * in) {
+	if(in == e[1]) {
+		return e[0];
+	} else {
+		#if SAFE
+			assert(in == e[0]);
+		#endif
+		return e[1];
+	}
+};
+
+/*
+ * Perform edge change, replaces org_edge with new_edge
+ */
+void node_t::change_edge(edge_t * org_edge, edge_t * new_edge) {
+	if(e[0] == org_edge) {
+		e[0] = new_edge;
+	} else {
+		#if SAFE
+			assert(org_edge == e[1]) ;
+		#endif
+		e[1] = new_edge;
+	}
+}
 
 vector<node_t*> nodes;
 vector<edge_t*> edges;
@@ -141,10 +136,11 @@ int main() {
 		nodes.push_back(node);
 	}	
 
-	//Calculate distances and do nearest neigbor
+	//Calculate distances
 	dist = new int*[num_points];
 
 	char * visited = new char[num_points];
+
 
 	for(int i = 0; i<num_points; ++i) {
 		dist[i] = new int[num_points];
@@ -160,34 +156,76 @@ int main() {
 		}
 	}
 
-	//nearest neighbor
-	visited[0] = 1;
-	int cur_node = 0;
-	for(int i = 0; i < num_points; ++i) {	
-		float nn_dist = INT_MAX;
-		int nn = -1;
-		for(int n = 0; n < num_points; ++n) {
-			if(visited[n] == 0 && nn_dist > dist[i][n] ) {
-				nn_dist = dist[i][n];
-				nn = n;
+	//render_init(800,600,map_w, map_h);
+
+	//find the convex hull
+	int M = graham_scan();
+
+	list<node_t*> remaining;
+
+	 min_dist  = new int[nodes.size()];
+
+	//Insert remaining into remaining list
+	for(int i=M; i<nodes.size(); ++i) {
+		remaining.push_back(nodes[i]);
+		int *n_dist = dist[i];
+		int min=0;
+		for(int n=1;n<M; ++n) {
+			if(n_dist[n]<n_dist[min]) {
+				min = n;
 			}
 		}
-		if(nn!=-1) {
-			edges.push_back(new edge_t(nodes[cur_node], nodes[nn]));
-			nodes[cur_node]->e[1] = edges.back();
-			nodes[nn]->e[0] = edges.back();
-			cur_node = nn;
-			visited[nn] = 1;
-		} else {
-			edges.push_back(new edge_t(nodes[cur_node], nodes[0]));
-			nodes[cur_node]->e[1] = edges.back();
-			nodes[0]->e[0] = edges.back();
+		min_dist[nodes[i]->id] = min;
+	}
+	
+	while(remaining.size() > 0) {
+		node_t* best=remaining.front();
+		list<node_t*>::iterator best_node_it = remaining.begin(); 
+		for(list<node_t*>::iterator it=remaining.begin(); it!=remaining.end();++it) {
+			if(min_dist[(*it)->id] > min_dist[best->id]) {//Find maximum
+				best = *it;
+				best_node_it = it;
+			}
 		}
+		
+		//Find best place to insert:
+		int min_incr = INT_MAX;
+		edge_t * best_edge = NULL; 
+		int * n_dist = dist[best->id];
+		for(vector<edge_t*>::iterator it=edges.begin(); it != edges.end(); ++it) {
+			int incr = n_dist[(*it)->start_node()->id]+n_dist[(*it)->end_node()->id]-(*it)->cost();
+			if(incr < min_incr) {
+				min_incr = incr;
+				best_edge = (*it);
+			}
+		}
+		//Modify edge
+		edge_t * ne = new edge_t(best, best_edge->end_node());
+		best_edge->end_node() = best;
+		best_edge->changed = true;
+		edges.push_back(ne);
+
+		//Remove edge from remaining list
+		remaining.erase(best_node_it);
+
+		//Update min costs for remaining:
+		for(list<node_t*>::iterator it=remaining.begin(); it!=remaining.end();++it) {
+			if(n_dist[(*it)->id] < min_dist[(*it)->id]) {
+				min_dist[(*it)->id] = n_dist[(*it)->id];
+			}
+		}
+	}
+
+	//Set the correct edges in the nodes
+	for(vector<edge_t*>::iterator it=edges.begin(); it!=edges.end(); ++it) {
+		(*it)->start_node()->e[1] = *it;
+		(*it)->end_node()->e[0] = *it;
 	}
 
    #if EXTREME_DEBUG
       print_edges();
    #endif 
+
    #if SAFE
 	   assert(check_path());
    #endif
@@ -217,6 +255,7 @@ int main() {
 int calc_dist(int p1, int p2) {
 	return (int)round(sqrt(pow(nodes[p1]->x-nodes[p2]->x,2)+pow(nodes[p1]->y-nodes[p2]->y,2)));
 }
+
 
 bool check_path() {
 	bool * visited = new bool[num_points];
@@ -334,4 +373,72 @@ bool two_opt(int e1, int e2) {
 	
 	return true;
 
+}
+
+float * cos_val;
+
+bool node_cos_compare(node_t * n1, node_t * n2) {
+	return cos_val[n1->id] < cos_val[n2->id];
+}
+
+/* Three points are a counter-clockwise turn if ccw > 0, clockwise if
+ * ccw < 0, and collinear if ccw = 0 because ccw is a determinant that
+ * gives the signed area of the triangle formed by p1, p2 and p3.
+ */
+int ccw(node_t * p1, node_t* p2,node_t* p3) {
+	return (p2->x - p1->x)*(p3->y - p1->y) - (p2->y - p1->y)*(p3->x - p1->x);
+}
+
+int graham_scan() {
+	node_t * p = nodes.front();
+	for(vector<node_t*>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
+		if((*it)->y < p->y ||  ( (*it)->y == p->y && (*it)->x < p->x )) {
+			p = *it;
+		} /* else if((*it)->y == p.y && (*it)->x == p.x)  // Maybe we should care? */
+	}
+
+	cos_val = new float[nodes.size()];
+	int * p_dist = dist[p->id];
+	for(vector<node_t*>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
+		if((*it)->id != p->id)
+			cos_val[(*it)->id] = (float)abs(p->x-(*it)->x)/p_dist[(*it)->id];
+		else {
+			//Swap p to first position in array
+			nodes[(it-nodes.begin())] = nodes[0];
+			nodes[0] = p;
+		}
+	}
+
+	std::sort(nodes.begin()+1, nodes.end(), node_cos_compare);
+
+	delete[] cos_val;
+
+	assert(nodes.front()->id==p->id);
+
+	int M = 2; //Number of nodes in convex hull
+	
+	node_t * tmp;
+
+	for(int i=2; i<nodes.size(); ++i) {
+		while (ccw(nodes[M-2], nodes[M-1],nodes[i]) <= 0)  {
+			if(M == 2) {
+				tmp = nodes[M-1];
+				nodes[M-1] = nodes[i];
+				nodes[i] = tmp;
+			} else {
+				--M;
+			}
+		}
+		++M;
+		tmp = nodes[M-1];
+		nodes[M-1] = nodes[i];
+		nodes[i] = tmp;
+	}
+
+	for(int i=1; i<M; ++i) {
+		edges.push_back(new edge_t(nodes[i-1], nodes[i]));
+	}
+	edges.push_back(new edge_t(nodes[M-1], nodes[0]));
+
+	return M;
 }
