@@ -11,9 +11,9 @@
 
 //#include "render.h"
 
-#define SAFE 0
+#define SAFE 1
 #define EXTREME_DEBUG 0
-#define DEBUG 0
+#define DEBUG 1
 
 #define TIME_LIMIT 1.2 * CLOCKS_PER_SEC
 
@@ -62,7 +62,8 @@ struct node_t {
 	node_t(int _id);
 	edge_t * out_edge(edge_t * in);
    void change_edge(edge_t * org_edge, edge_t * new_edge);
-
+	
+	void print(bool newline=true);
 };
 
 edge_t::edge_t(node_t* node1, node_t* node2) {
@@ -81,10 +82,9 @@ int edge_t::cost() {
 }
 
 void edge_t::print(bool newline) {
+	fprintf(stderr,"e: %i -> %i", start_node()->id, end_node()->id); 
 	if(newline) {
-		fprintf(stderr,"e: %i -> %i\n", start_node()->id, end_node()->id); 
-	} else {
-		fprintf(stderr,"e: %i -> %i", start_node()->id, end_node()->id); 
+		fprintf(stderr,"\n");
 	}
 }
 
@@ -128,7 +128,14 @@ edge_t * node_t::out_edge(edge_t * in) {
 		#endif
 		return e[1];
 	}
-};
+}
+;
+void node_t::print(bool newline) {
+	fprintf(stderr,"n: %i (%f, %f)", id, x, y); 
+	if(newline) {
+		fprintf(stderr,"\n");
+	}
+}
 
 /*
  * Perform edge change, replaces org_edge with new_edge
@@ -321,6 +328,13 @@ void print_edges() {
 		(*it)->print();
 	}
 }
+
+void print_nodes() {
+	fprintf(stderr, "Nodes: \n");
+	for(vector<node_t*>::iterator it=nodes.begin(); it!=nodes.end();++it) {
+		(*it)->print();
+	}
+}
 #endif
 
 bool two_opt(int e1, int e2) {
@@ -451,7 +465,7 @@ int graham_scan() {
 	node_t * tmp;
 
 	for(int i=2; i<nodes.size(); ++i) {
-		while (ccw(nodes[M-2], nodes[M-1],nodes[i]) <= 0)  {
+		while (i < nodes.size() && ccw(nodes[M-2], nodes[M-1],nodes[i]) <= 0)  {
 			if(M == 2) {
 				tmp = nodes[M-1];
 				nodes[M-1] = nodes[i];
@@ -466,11 +480,23 @@ int graham_scan() {
 		nodes[M-1] = nodes[i];
 		nodes[i] = tmp;
 	}
-
+	#if DEBUG
+		fprintf(stderr, "Convex hull: (%i", nodes[0]->id); 
+	#endif
 	for(int i=1; i<M; ++i) {
 		edges.push_back(new edge_t(nodes[i-1], nodes[i]));
+		#if DEBUG
+			fprintf(stderr, ", %i", nodes[i]->id); 
+		#endif
 	}
+
+	
 	edges.push_back(new edge_t(nodes[M-1], nodes[0]));
+
+	#if DEBUG
+		fprintf(stderr, ")\n");
+		print_edges();
+	#endif
 
 	return M;
 }
