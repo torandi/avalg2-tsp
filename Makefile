@@ -5,7 +5,7 @@ LDFLAGS = `sdl-config --libs`  -lGL
 all: tsp
 
 tsp: $(OBJS)
-	$(CXX) $(OBJS) $(LDFLAGS) -o $@
+	$(CXX) $(CXXFLAGS) $(OBJS) $(LDFLAGS) -o $@
 
 
 %.o : %.cpp %.h

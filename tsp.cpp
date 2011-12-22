@@ -198,8 +198,8 @@ int main() {
 #endif
 
 	//find the convex hull
-	int M = graham_scan();
-	//int M = 2;
+	//int M = graham_scan();
+	int M = 2;
 
 	for(int i=1; i<M; ++i) {
 		edges.push_back(new edge_t(nodes[i-1], nodes[i]));
