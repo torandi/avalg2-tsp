@@ -199,6 +199,12 @@ int main() {
 
 	//find the convex hull
 	int M = graham_scan();
+	//int M = 2;
+
+	for(int i=1; i<M; ++i) {
+		edges.push_back(new edge_t(nodes[i-1], nodes[i]));
+	}
+	edges.push_back(new edge_t(nodes[M-1], nodes[0]));
 
 #if GFX
 		render_loop(10000,M);
@@ -216,11 +222,11 @@ int main() {
 	//Insert remaining into remaining list
 	for(int i=M; i<nodes.size(); ++i) {
 		remaining.push_back(nodes[i]);
-		int *n_dist = dist[i];
-		int min=0;
+		int *n_dist = dist[nodes[i]->id];
+		int min=n_dist[0];
 		for(int n=1;n<M; ++n) {
-			if(n_dist[n] < n_dist[min]) {
-				min = n;
+			if(n_dist[n] < min) {
+				min = n_dist[n];
 			}
 		}
 		min_dist[nodes[i]->id] = min;
@@ -233,7 +239,7 @@ int main() {
 		node_t* best=remaining.front();
 		list<node_t*>::iterator best_node_it = remaining.begin(); 
 		for(list<node_t*>::iterator it=remaining.begin(); it!=remaining.end();++it) {
-			if(min_dist[(*it)->id] < min_dist[best->id]) {//Find minimum
+			if(min_dist[(*it)->id] > min_dist[best->id]) {
 				best = *it;
 				best_node_it = it;
 			}
@@ -275,9 +281,6 @@ int main() {
 		(*it)->start_node()->e[1] = *it;
 		(*it)->end_node()->e[0] = *it;
 	}
-#if GFX
-		render_loop(-1);
-#endif
 
    #if EXTREME_DEBUG
       print_edges();
@@ -294,6 +297,10 @@ int main() {
          }
       }
    } while(clock() < TIME_LIMIT);
+
+#if GFX
+		render_loop(-1);
+#endif
 
 	//Output
 
@@ -520,23 +527,6 @@ int graham_scan() {
 		nodes[M-1] = nodes[i];
 		nodes[i] = tmp;
 	}
-
-
-	#if DEBUG
-		fprintf(stderr, "Convex hull: (%i", nodes[0]->id); 
-	#endif
-	for(int i=1; i<M; ++i) {
-		edges.push_back(new edge_t(nodes[i-1], nodes[i]));
-		#if DEBUG
-			fprintf(stderr, ", %i", nodes[i]->id); 
-		#endif
-	}
-	edges.push_back(new edge_t(nodes[M-1], nodes[0]));
-
-	#if DEBUG
-		fprintf(stderr, ")\n");
-		print_edges();
-	#endif
 
 	return M;
 }
