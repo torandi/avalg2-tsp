@@ -15,7 +15,7 @@
 #define DEBUG 0
 #define GFX 0
 
-#define TIME_LIMIT 1.2 * CLOCKS_PER_SEC
+#define TIME_LIMIT 0.5 * CLOCKS_PER_SEC
 
 using namespace std;
 
