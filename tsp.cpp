@@ -9,11 +9,11 @@
 #include <ctime>
 #include <algorithm>
 
-//#include "render.h"
 
 #define SAFE 1
 #define EXTREME_DEBUG 0
 #define DEBUG 1
+#define GFX 1
 
 #define TIME_LIMIT 1.2 * CLOCKS_PER_SEC
 
@@ -31,40 +31,17 @@ int *min_dist;
 
 int num_points;
 
+#if GFX
+	#include "render.h"
+	bool run=true;
+	void render_loop(int iterations);
+#endif
 
 #if DEBUG
    void print_edges();
 #endif
 
-struct node_t;
-
-struct edge_t {
-	node_t* n[2];
-	bool out;
-   bool changed;
-   int _cost;
-	edge_t(node_t* node1, node_t* node2);
-	int cost();
-	void print(bool newline=true);
-	node_t * &start_node();
-	node_t * &end_node();
-	void swap_direction();
-	edge_t * next();
-};
-
-struct node_t {
-	float x;
-	float y;
-	int id;
-	edge_t* e[2];
-
-	node_t(const node_t &n);
-	node_t(int _id);
-	edge_t * out_edge(edge_t * in);
-   void change_edge(edge_t * org_edge, edge_t * new_edge);
-	
-	void print(bool newline=true);
-};
+#include "tsp.h"
 
 edge_t::edge_t(node_t* node1, node_t* node2) {
 	n[0] = node1;
@@ -175,10 +152,29 @@ int main() {
 
 	char * visited = new char[num_points];
 
+#if GFX
+	int min_w = INT_MAX;
+	int min_h = INT_MAX;
+   int map_w = 0;
+   int map_h = 0;
+#endif
 
 	for(int i = 0; i<num_points; ++i) {
 		dist[i] = new int[num_points];
 		visited[i] = 0;
+#if GFX
+		if(min_w > nodes[i]->x)
+			min_w = nodes[i]->x;
+
+		if(min_h > nodes[i]->y)
+			min_h = nodes[i]->y;
+
+      if(map_w < nodes[i]->x)
+         map_w = nodes[i]->x;
+
+      if(map_h < nodes[i]->y)
+         map_h = nodes[i]->y;
+#endif
 		for(int n = 0; n < num_points; ++n) {
 			if(n < i) {
 				dist[i][n] = dist[n][i];
@@ -190,14 +186,18 @@ int main() {
 		}
 	}
 
-	//render_init(800,600,map_w, map_h);
+#if GFX
+	render_init(800,600,min_w, min_h, map_w, map_h);
+#endif
 
 	//find the convex hull
 	int M = graham_scan();
 
+
 #if DEBUG
 	fprintf(stderr,"Graham scan complete\n");
 #endif
+
 
 	list<node_t*> remaining;
 
@@ -217,6 +217,9 @@ int main() {
 	}
 	
 	while(remaining.size() > 0) {
+#if GFX
+		render_loop(1000);
+#endif
 		node_t* best=remaining.front();
 		list<node_t*>::iterator best_node_it = remaining.begin(); 
 		for(list<node_t*>::iterator it=remaining.begin(); it!=remaining.end();++it) {
@@ -252,6 +255,9 @@ int main() {
 				min_dist[(*it)->id] = n_dist[(*it)->id];
 			}
 		}
+#if GFX
+		render_loop(1000);
+#endif
 	}
 
 	//Set the correct edges in the nodes
@@ -259,6 +265,9 @@ int main() {
 		(*it)->start_node()->e[1] = *it;
 		(*it)->end_node()->e[0] = *it;
 	}
+#if GFX
+		render_loop(-1);
+#endif
 
    #if EXTREME_DEBUG
       print_edges();
@@ -445,9 +454,12 @@ int graham_scan() {
 	cos_val = new float[nodes.size()];
 	int * p_dist = dist[p->id];
 	for(vector<node_t*>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
-		if((*it)->id != p->id)
+		if(p_dist[(*it)->id] > 0) {
 			cos_val[(*it)->id] = (float)abs(p->x-(*it)->x)/p_dist[(*it)->id];
-		else {
+      } else if((*it)->id != p->id ) {
+         cos_val[(*it)->id] = 0;
+	   } else {
+         cos_val[(*it)->id] = -2;
 			//Swap p to first position in array
 			nodes[(it-nodes.begin())] = nodes[0];
 			nodes[0] = p;
@@ -456,7 +468,6 @@ int graham_scan() {
 
 	std::sort(nodes.begin()+1, nodes.end(), node_cos_compare);
 
-	delete[] cos_val;
 
 	assert(nodes.front()->id==p->id);
 
@@ -464,8 +475,18 @@ int graham_scan() {
 	
 	node_t * tmp;
 
+#if DEBUG
+	fprintf(stderr, "Sorted nodes. P: %i\n", p->id);
+	for(vector<node_t*>::iterator it=nodes.begin(); it!=nodes.end();++it) {
+		(*it)->print(false);
+      fprintf(stderr, " - cos: %f, p_dist: %i\n", cos_val[(*it)->id], p_dist[(*it)->id]);
+	}
+#endif
+
+	delete[] cos_val;
+
 	for(int i=2; i<nodes.size(); ++i) {
-		while (i < nodes.size() && ccw(nodes[M-2], nodes[M-1],nodes[i]) <= 0)  {
+		while (i < nodes.size() && ccw(nodes[M-2], nodes[M-1],nodes[i]) < 0)  {
 			if(M == 2) {
 				tmp = nodes[M-1];
 				nodes[M-1] = nodes[i];
@@ -500,3 +521,13 @@ int graham_scan() {
 
 	return M;
 }
+
+#if GFX
+void render_loop(int iterations) {
+	while(run && iterations!=0) {
+		--iterations;
+		render(nodes, edges);
+		poll(&run);
+	}
+}
+#endif
