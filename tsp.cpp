@@ -219,7 +219,7 @@ int main() {
 		int *n_dist = dist[i];
 		int min=0;
 		for(int n=1;n<M; ++n) {
-			if(n_dist[n]<n_dist[min]) {
+			if(n_dist[n] < n_dist[min]) {
 				min = n;
 			}
 		}
@@ -233,7 +233,7 @@ int main() {
 		node_t* best=remaining.front();
 		list<node_t*>::iterator best_node_it = remaining.begin(); 
 		for(list<node_t*>::iterator it=remaining.begin(); it!=remaining.end();++it) {
-			if(min_dist[(*it)->id] > min_dist[best->id]) {//Find maximum
+			if(min_dist[(*it)->id] < min_dist[best->id]) {//Find minimum
 				best = *it;
 				best_node_it = it;
 			}
