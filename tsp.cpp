@@ -286,7 +286,7 @@ int main() {
    #if SAFE
 	   assert(check_path());
    #endif
-/*
+
    do {
       for(int e1=0; e1<edges.size(); ++e1) {
          for(int e2 = 0; e2 < edges.size(); ++e2) {
@@ -294,7 +294,7 @@ int main() {
          }
       }
    } while(clock() < TIME_LIMIT);
-*/
+
 	//Output
 
 	edge_t* cur_edge = edges[0];
