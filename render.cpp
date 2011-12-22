@@ -41,17 +41,24 @@ void render_init(int w, int h, int map_min_w, int map_min_h, int map_w, int map_
   min_h = map_min_h;
 }
 
-void render(const std::vector<node_t*> &nodes, const std::vector<edge_t*> &edges) {
+void render(const std::vector<node_t*> &nodes, const std::vector<edge_t*> &edges, int mark_nodes, int mark_edges) {
 	glClear(GL_COLOR_BUFFER_BIT);
 	glBegin(GL_POINTS);
-	   glColor3f(1,1,1);
 		for(std::vector<node_t*>::const_iterator it=nodes.begin(); it!=nodes.end(); ++it) {
+			if(mark_nodes-- > 0)
+				glColor3f(0,1,1);
+			else
+				glColor3f(1,1,1);
 			glVertex2f((*it)->x, (*it)->y);
 		}
 	glEnd();
 	glColor3f(1,0,1);
 	glBegin(GL_LINES);
 		for(std::vector<edge_t*>::const_iterator it=edges.begin(); it!=edges.end(); ++it) {
+			if(mark_edges-- > 0)
+				glColor3f(0,1,0);
+			else
+				glColor3f(1,0,1);
 			glVertex2f((*it)->start_node()->x, (*it)->start_node()->y);
 			glVertex2f((*it)->end_node()->x, (*it)->end_node()->y);
 		}

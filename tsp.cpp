@@ -10,10 +10,10 @@
 #include <algorithm>
 
 
-#define SAFE 1
+#define SAFE 0
 #define EXTREME_DEBUG 0
-#define DEBUG 1
-#define GFX 1
+#define DEBUG 0
+#define GFX 0
 
 #define TIME_LIMIT 1.2 * CLOCKS_PER_SEC
 
@@ -34,7 +34,7 @@ int num_points;
 #if GFX
 	#include "render.h"
 	bool run=true;
-	void render_loop(int iterations);
+	void render_loop(int iterations, int mark_nodes=0, int mark_edges=0);
 #endif
 
 #if DEBUG
@@ -147,6 +147,13 @@ int main() {
 		nodes.push_back(node);
 	}	
 
+	if(num_points <= 2) {
+		for(int i=0; i < num_points; ++i) {
+			printf("%i\n", i);
+		}
+		exit(0);
+	}
+
 	//Calculate distances
 	dist = new int*[num_points];
 
@@ -193,6 +200,9 @@ int main() {
 	//find the convex hull
 	int M = graham_scan();
 
+#if GFX
+		render_loop(10000,M);
+#endif
 
 #if DEBUG
 	fprintf(stderr,"Graham scan complete\n");
@@ -432,7 +442,7 @@ bool two_opt(int e1, int e2) {
 float * cos_val;
 
 bool node_cos_compare(node_t * n1, node_t * n2) {
-	return cos_val[n1->id] < cos_val[n2->id];
+	return cos_val[n1->id] > cos_val[n2->id];
 }
 
 /* Three points are a counter-clockwise turn if ccw > 0, clockwise if
@@ -440,13 +450,17 @@ bool node_cos_compare(node_t * n1, node_t * n2) {
  * gives the signed area of the triangle formed by p1, p2 and p3.
  */
 int ccw(node_t * p1, node_t* p2,node_t* p3) {
+	if(p1->x == p2->x && p1->x == p3->x)
+		return 1;
+	if(p1->y == p2->y && p1->y == p3->y)
+		return 1;
 	return (p2->x - p1->x)*(p3->y - p1->y) - (p2->y - p1->y)*(p3->x - p1->x);
 }
 
 int graham_scan() {
 	node_t * p = nodes.front();
 	for(vector<node_t*>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
-		if((*it)->y < p->y ||  ( (*it)->y == p->y && (*it)->x < p->x )) {
+		if((*it)->y > p->y ||  ( (*it)->y == p->y && (*it)->x < p->x )) {
 			p = *it;
 		} /* else if((*it)->y == p.y && (*it)->x == p.x)  // Maybe we should care? */
 	}
@@ -455,21 +469,14 @@ int graham_scan() {
 	int * p_dist = dist[p->id];
 	for(vector<node_t*>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
 		if(p_dist[(*it)->id] > 0) {
-			cos_val[(*it)->id] = (float)abs(p->x-(*it)->x)/p_dist[(*it)->id];
-      } else if((*it)->id != p->id ) {
+			cos_val[(*it)->id] = (float)(p->x-(*it)->x)/p_dist[(*it)->id];
+      } else {
          cos_val[(*it)->id] = 0;
-	   } else {
-         cos_val[(*it)->id] = -2;
-			//Swap p to first position in array
-			nodes[(it-nodes.begin())] = nodes[0];
-			nodes[0] = p;
 		}
 	}
+	cos_val[p->id] = 2;
 
-	std::sort(nodes.begin()+1, nodes.end(), node_cos_compare);
-
-
-	assert(nodes.front()->id==p->id);
+	std::sort(nodes.begin(), nodes.end(), node_cos_compare);
 
 	int M = 2; //Number of nodes in convex hull
 	
@@ -483,24 +490,38 @@ int graham_scan() {
 	}
 #endif
 
+
 	delete[] cos_val;
 
 	for(int i=2; i<nodes.size(); ++i) {
-		while (i < nodes.size() && ccw(nodes[M-2], nodes[M-1],nodes[i]) < 0)  {
+		while (i < nodes.size() && ccw(nodes[M-2], nodes[M-1],nodes[i]) <= 0)  {
 			if(M == 2) {
+#if DEBUG
+				fprintf(stderr,"M==2, move %i -> %i\n", M-1, i);
+#endif
 				tmp = nodes[M-1];
 				nodes[M-1] = nodes[i];
 				nodes[i] = tmp;
 				++i;
 			} else {
 				--M;
+#if DEBUG
+				fprintf(stderr,"--M, M = %i\n", M);
+#endif
 			}
 		}
+		if(i >= nodes.size())
+			break;
 		++M;
+#if DEBUG
+		printf(stderr,"++M, move %i -> %i\n", M-1, i);
+#endif
 		tmp = nodes[M-1];
 		nodes[M-1] = nodes[i];
 		nodes[i] = tmp;
 	}
+
+
 	#if DEBUG
 		fprintf(stderr, "Convex hull: (%i", nodes[0]->id); 
 	#endif
@@ -510,8 +531,6 @@ int graham_scan() {
 			fprintf(stderr, ", %i", nodes[i]->id); 
 		#endif
 	}
-
-	
 	edges.push_back(new edge_t(nodes[M-1], nodes[0]));
 
 	#if DEBUG
@@ -523,10 +542,10 @@ int graham_scan() {
 }
 
 #if GFX
-void render_loop(int iterations) {
+void render_loop(int iterations, int mark_nodes, int mark_edges) {
 	while(run && iterations!=0) {
 		--iterations;
-		render(nodes, edges);
+		render(nodes, edges, mark_nodes, mark_edges);
 		poll(&run);
 	}
 }
