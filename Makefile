@@ -1,4 +1,3 @@
-#LDFLAGS=
 CXXFLAGS=-g -pg
 
 all: tsp
