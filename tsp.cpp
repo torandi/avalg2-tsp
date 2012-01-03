@@ -467,15 +467,15 @@ bool three_opt(int e1, int e2, int e3) {
 	edge_t *t3 = edges[e3];
 
 	
-	if(t1->end_node() == t2->end_node() || t1->end_node() == t2->end_node()) 
+	/*if(t1->end_node() == t2->end_node() || t1->end_node() == t2->end_node()) 
        //Don't opt, edges have common node
 		return false;
-	/*
-	if(t1->start_node() == t2->start_node() || t1->start_node() == t3->start_node() || t2->start_node() || t1->end_node() == t2->end_node() || t1->end_node() || t2->end_node()){ 
+	*/
+	if(t1->end_node() == t2->start_node() || t1->end_node() == t3->start_node() || t2->end_node() == t1->start_node() || t2->end_node() == t3->start_node() || t3->end_node() == t1->start_node()|| t3->end_node() == t1->start_node()){ 
        //Don't opt, edges have common node
 		return true;
 	}
-	*/
+	
 	int old_cost = t1->cost() + t2->cost() + t3->cost();
 
 
@@ -502,15 +502,15 @@ bool three_opt(int e1, int e2, int e3) {
 		if(old_cost < new_cost) {
 			fprintf(stderr,"Starting two opt\n");
 			if(two_opt(e1,e2)){
-				fprintf(stderr,"First two opt\n");	
+				//fprintf(stderr,"First two opt\n");	
 				return true;
 			}
 			else if(two_opt(e1,e3)){
-				fprintf(stderr,"Second two opt\n");
+				//fprintf(stderr,"Second two opt\n");
 				return true;
 			}			
 			else if(two_opt(e2,e3)){
-				fprintf(stderr,"Third two opt\n");
+				//fprintf(stderr,"Third two opt\n");
 				return true;
 			}
 			return true;
