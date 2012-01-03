@@ -207,7 +207,7 @@ int main() {
 	edges.push_back(new edge_t(nodes[M-1], nodes[0]));
 
 #if GFX
-		render_loop(10000,M);
+		render_loop(1000,M);
 #endif
 
 #if DEBUG
@@ -234,7 +234,7 @@ int main() {
 	
 	while(remaining.size() > 0) {
 #if GFX
-		render_loop(1000);
+		render_loop(10);
 #endif
 		node_t* best=remaining.front();
 		list<node_t*>::iterator best_node_it = remaining.begin(); 
@@ -272,7 +272,7 @@ int main() {
 			}
 		}
 #if GFX
-		render_loop(1000);
+		render_loop(10);
 #endif
 	}
 
@@ -533,8 +533,8 @@ int graham_scan() {
 
 #if GFX
 void render_loop(int iterations, int mark_nodes, int mark_edges) {
-	while(run && iterations!=0) {
-		--iterations;
+	long in = clock();
+	while(run && (iterations==-1 || clock() < in+(iterations/1000.0)*CLOCKS_PER_SEC)) {
 		render(nodes, edges, mark_nodes, mark_edges);
 		poll(&run);
 	}
