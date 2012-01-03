@@ -23,6 +23,7 @@ int calc_dist(int i, int n);
 int total_dist();
 void nearest_neighbor();
 bool two_opt(int e1, int e2);
+bool three_opt(int e1, int e2, int e3);
 bool check_path();
 int graham_scan();
 
@@ -291,11 +292,19 @@ int main() {
    #endif
 
    do {
-      for(int e1=0; e1<edges.size(); ++e1) {
-         for(int e2 = 0; e2 < edges.size(); ++e2) {
-            two_opt(e1, e2);
-         }
-      }
+		int e3 = rand() % edges.size();
+		//int local_size = edges.size();
+		//int e1 = rand() % local_size;
+		//int e2 = rand() % local_size;
+		//if(e1 != e2 && e1 != e3 && e2 != e3)
+			//three_opt(e1, e2 , e3);
+
+		for(int e1=0; e1<edges.size(); ++e1) {
+			for(int e2 = 0; e2 < edges.size(); ++e2) {
+						//two_opt(e1, e2);
+						three_opt(e1, e2, e3);
+			}
+		}
    } while(clock() < TIME_LIMIT);
 
 #if GFX
@@ -370,7 +379,7 @@ bool two_opt(int e1, int e2) {
 
 	if(t1->start_node() == t2->end_node() || t1->end_node() == t2->start_node()) 
        //Don't opt, edges have common node
-		return true;
+		return false;
 
 	int old_cost = t1->cost() + t2->cost();
 
@@ -386,7 +395,7 @@ bool two_opt(int e1, int e2) {
 	if(old_cost <= new_cost) {
       delete t1n;
       delete t2n;
-		return true;
+		return false;
 	}
    #if DEBUG
       fprintf(stderr,"Swap edges from: { \n");
@@ -402,13 +411,12 @@ bool two_opt(int e1, int e2) {
 
       fprintf(stderr,"Improvment: %d\n",old_cost-new_cost);
    #endif
-
 	/**
 	* Cycle through nodes until end node is  t2->end_node() 
 	*/
    edge_t * cur_edge = NULL;
 	edge_t * next_edge = t1->next();
-
+	
 	while(next_edge->end_node() != t2->end_node()) {
       cur_edge = next_edge;
       next_edge = cur_edge->next();
@@ -419,6 +427,7 @@ bool two_opt(int e1, int e2) {
 		cur_edge->swap_direction();
 	}
 
+   
 	//Perform the real swap and delete the old edges
    /*
     * What we do is to move the end of t1 to the start of t2
@@ -441,7 +450,141 @@ bool two_opt(int e1, int e2) {
 
 	delete t1n;
 	delete t2n;
+
+
+
 	
+	return true;
+
+}
+
+
+
+bool three_opt(int e1, int e2, int e3) {
+
+	edge_t *t1 = edges[e1];
+	edge_t *t2 = edges[e2];
+	edge_t *t3 = edges[e3];
+
+	
+	if(t1->end_node() == t2->end_node() || t1->end_node() == t2->end_node()) 
+       //Don't opt, edges have common node
+		return false;
+	/*
+	if(t1->start_node() == t2->start_node() || t1->start_node() == t3->start_node() || t2->start_node() || t1->end_node() == t2->end_node() || t1->end_node() || t2->end_node()){ 
+       //Don't opt, edges have common node
+		return true;
+	}
+	*/
+	int old_cost = t1->cost() + t2->cost() + t3->cost();
+
+
+	/**
+	* Swap nodes 
+	*/
+	edge_t *t1n = new edge_t(t1->start_node(), t2->end_node());
+	edge_t *t2n = new edge_t(t2->end_node(), t3->end_node());
+	edge_t *t3n = new edge_t(t1->end_node(), t3->start_node());
+	fprintf(stderr,"Starting three opt\n");
+      
+	int new_cost = (t1n->cost()+t2n->cost()+t3n->cost());
+	//fprintf(stderr,"Old value %d\n", old_cost);
+	//fprintf(stderr,"New value %d\n", new_cost);
+        
+	if(old_cost < new_cost) {
+		fprintf(stderr,"First failed. Testing other way\n");
+		edge_t *t1n = new edge_t(t1->start_node(), t3->end_node());
+		edge_t *t2n = new edge_t(t2->start_node(), t1->end_node());
+		edge_t *t3n = new edge_t(t3->start_node(), t2->end_node());
+		int new_cost = (t1n->cost()+t2n->cost()+t3n->cost());
+			//fprintf(stderr,"Old value %d\n", old_cost);
+			//fprintf(stderr,"New value %d\n", new_cost);
+		if(old_cost < new_cost) {
+			fprintf(stderr,"Starting two opt\n");
+			if(two_opt(e1,e2)){
+				fprintf(stderr,"First two opt\n");	
+				return true;
+			}
+			else if(two_opt(e1,e3)){
+				fprintf(stderr,"Second two opt\n");
+				return true;
+			}			
+			else if(two_opt(e2,e3)){
+				fprintf(stderr,"Third two opt\n");
+				return true;
+			}
+			return true;
+		}
+		return true;
+	}
+	fprintf(stderr,"Opting first\n");
+    
+   #if DEBUG
+      fprintf(stderr,"Swap edges from: { \n");
+      t1->print(false);
+      fprintf(stderr,", ");
+      t2->print(false);
+      fprintf(stderr,"}\n");
+      fprintf(stderr, "to: edges: {");
+      t1n->print(false);
+      fprintf(stderr,", ");
+      t2n->print(false);
+      fprintf(stderr,"}\n");
+
+      fprintf(stderr,"Improvment: %d\n",old_cost-new_cost);
+   #endif
+	
+	/**
+	* Cycle through nodes until end node is  t3->end_node() 
+	*
+   edge_t * cur_edge = NULL;
+	edge_t * next_edge = t1->next();
+
+	while(next_edge->end_node() != t2->end_node()) {
+      cur_edge = next_edge;
+      next_edge = cur_edge->next();
+      #if EXTREME_DEBUG
+         fprintf(stderr, "Swap edge ");
+         cur_edge->print();
+      #endif
+		cur_edge->swap_direction();
+	}
+
+	//Perform the real swap and delete the old edges
+   /*
+    * What we do is to move the end of t1 to the start of t2
+    * and then move the start of t2 to the end of t1
+    */
+
+   //Swap edge pointers in nodes
+   t1->end_node()->change_edge(t1,t3);
+   t2->end_node()->change_edge(t2,t1);
+   t3->start_node()->change_edge(t3,t2);
+   
+   
+   //t1->end_node()->change_edge(t1, t2);
+   //t2->start_node()->change_edge(t2, t1);
+	
+   
+   //Swap nodes in edges
+	t1->end_node() = t1n->end_node();
+	t2->end_node() = t2n->end_node();
+	t3->start_node() = t3n->start_node();
+	t3->end_node() = t3n->end_node();
+	
+	//t1->end_node() = t1n->end_node();
+	//t2->start_node() = t2n->start_node();
+
+   //Mark changed
+   t1->changed = true;
+   t2->changed = true;
+   t3->changed = true;
+   
+   //delete tmp variables
+
+	delete t1n;
+	delete t2n;
+	delete t3n;
 	return true;
 
 }
