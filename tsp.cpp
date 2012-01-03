@@ -9,13 +9,13 @@
 #include <ctime>
 #include <algorithm>
 
-//#include "render.h"
 
-#define SAFE 1
+#define SAFE 0
 #define EXTREME_DEBUG 0
-#define DEBUG 1
+#define DEBUG 0
+#define GFX 0
 
-#define TIME_LIMIT 1.2 * CLOCKS_PER_SEC
+#define TIME_LIMIT 0.5 * CLOCKS_PER_SEC
 
 using namespace std;
 
@@ -31,40 +31,17 @@ int *min_dist;
 
 int num_points;
 
+#if GFX
+	#include "render.h"
+	bool run=true;
+	void render_loop(int iterations, int mark_nodes=0, int mark_edges=0);
+#endif
 
 #if DEBUG
    void print_edges();
 #endif
 
-struct node_t;
-
-struct edge_t {
-	node_t* n[2];
-	bool out;
-   bool changed;
-   int _cost;
-	edge_t(node_t* node1, node_t* node2);
-	int cost();
-	void print(bool newline=true);
-	node_t * &start_node();
-	node_t * &end_node();
-	void swap_direction();
-	edge_t * next();
-};
-
-struct node_t {
-	float x;
-	float y;
-	int id;
-	edge_t* e[2];
-
-	node_t(const node_t &n);
-	node_t(int _id);
-	edge_t * out_edge(edge_t * in);
-   void change_edge(edge_t * org_edge, edge_t * new_edge);
-	
-	void print(bool newline=true);
-};
+#include "tsp.h"
 
 edge_t::edge_t(node_t* node1, node_t* node2) {
 	n[0] = node1;
@@ -170,15 +147,41 @@ int main() {
 		nodes.push_back(node);
 	}	
 
+	if(num_points <= 2) {
+		for(int i=0; i < num_points; ++i) {
+			printf("%i\n", i);
+		}
+		exit(0);
+	}
+
 	//Calculate distances
 	dist = new int*[num_points];
 
 	char * visited = new char[num_points];
 
+#if GFX
+	int min_w = INT_MAX;
+	int min_h = INT_MAX;
+   int map_w = 0;
+   int map_h = 0;
+#endif
 
 	for(int i = 0; i<num_points; ++i) {
 		dist[i] = new int[num_points];
 		visited[i] = 0;
+#if GFX
+		if(min_w > nodes[i]->x)
+			min_w = nodes[i]->x;
+
+		if(min_h > nodes[i]->y)
+			min_h = nodes[i]->y;
+
+      if(map_w < nodes[i]->x)
+         map_w = nodes[i]->x;
+
+      if(map_h < nodes[i]->y)
+         map_h = nodes[i]->y;
+#endif
 		for(int n = 0; n < num_points; ++n) {
 			if(n < i) {
 				dist[i][n] = dist[n][i];
@@ -190,14 +193,27 @@ int main() {
 		}
 	}
 
-	//render_init(800,600,map_w, map_h);
+#if GFX
+	render_init(800,600,min_w, min_h, map_w, map_h);
+#endif
 
 	//find the convex hull
-	int M = graham_scan();
+	//int M = graham_scan();
+	int M = 2;
+
+	for(int i=1; i<M; ++i) {
+		edges.push_back(new edge_t(nodes[i-1], nodes[i]));
+	}
+	edges.push_back(new edge_t(nodes[M-1], nodes[0]));
+
+#if GFX
+		render_loop(10000,M);
+#endif
 
 #if DEBUG
 	fprintf(stderr,"Graham scan complete\n");
 #endif
+
 
 	list<node_t*> remaining;
 
@@ -206,21 +222,24 @@ int main() {
 	//Insert remaining into remaining list
 	for(int i=M; i<nodes.size(); ++i) {
 		remaining.push_back(nodes[i]);
-		int *n_dist = dist[i];
-		int min=0;
+		int *n_dist = dist[nodes[i]->id];
+		int min=n_dist[0];
 		for(int n=1;n<M; ++n) {
-			if(n_dist[n]<n_dist[min]) {
-				min = n;
+			if(n_dist[n] < min) {
+				min = n_dist[n];
 			}
 		}
 		min_dist[nodes[i]->id] = min;
 	}
 	
 	while(remaining.size() > 0) {
+#if GFX
+		render_loop(1000);
+#endif
 		node_t* best=remaining.front();
 		list<node_t*>::iterator best_node_it = remaining.begin(); 
 		for(list<node_t*>::iterator it=remaining.begin(); it!=remaining.end();++it) {
-			if(min_dist[(*it)->id] > min_dist[best->id]) {//Find maximum
+			if(min_dist[(*it)->id] > min_dist[best->id]) {
 				best = *it;
 				best_node_it = it;
 			}
@@ -252,6 +271,9 @@ int main() {
 				min_dist[(*it)->id] = n_dist[(*it)->id];
 			}
 		}
+#if GFX
+		render_loop(1000);
+#endif
 	}
 
 	//Set the correct edges in the nodes
@@ -267,7 +289,7 @@ int main() {
    #if SAFE
 	   assert(check_path());
    #endif
-/*
+
    do {
       for(int e1=0; e1<edges.size(); ++e1) {
          for(int e2 = 0; e2 < edges.size(); ++e2) {
@@ -275,7 +297,11 @@ int main() {
          }
       }
    } while(clock() < TIME_LIMIT);
-*/
+
+#if GFX
+		render_loop(-1);
+#endif
+
 	//Output
 
 	edge_t* cur_edge = edges[0];
@@ -423,7 +449,7 @@ bool two_opt(int e1, int e2) {
 float * cos_val;
 
 bool node_cos_compare(node_t * n1, node_t * n2) {
-	return cos_val[n1->id] < cos_val[n2->id];
+	return cos_val[n1->id] > cos_val[n2->id];
 }
 
 /* Three points are a counter-clockwise turn if ccw > 0, clockwise if
@@ -431,13 +457,17 @@ bool node_cos_compare(node_t * n1, node_t * n2) {
  * gives the signed area of the triangle formed by p1, p2 and p3.
  */
 int ccw(node_t * p1, node_t* p2,node_t* p3) {
+	if(p1->x == p2->x && p1->x == p3->x)
+		return 1;
+	if(p1->y == p2->y && p1->y == p3->y)
+		return 1;
 	return (p2->x - p1->x)*(p3->y - p1->y) - (p2->y - p1->y)*(p3->x - p1->x);
 }
 
 int graham_scan() {
 	node_t * p = nodes.front();
 	for(vector<node_t*>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
-		if((*it)->y < p->y ||  ( (*it)->y == p->y && (*it)->x < p->x )) {
+		if((*it)->y > p->y ||  ( (*it)->y == p->y && (*it)->x < p->x )) {
 			p = *it;
 		} /* else if((*it)->y == p.y && (*it)->x == p.x)  // Maybe we should care? */
 	}
@@ -445,58 +475,68 @@ int graham_scan() {
 	cos_val = new float[nodes.size()];
 	int * p_dist = dist[p->id];
 	for(vector<node_t*>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
-		if((*it)->id != p->id)
-			cos_val[(*it)->id] = (float)abs(p->x-(*it)->x)/p_dist[(*it)->id];
-		else {
-			//Swap p to first position in array
-			nodes[(it-nodes.begin())] = nodes[0];
-			nodes[0] = p;
+		if(p_dist[(*it)->id] > 0) {
+			cos_val[(*it)->id] = (float)(p->x-(*it)->x)/p_dist[(*it)->id];
+      } else {
+         cos_val[(*it)->id] = 0;
 		}
 	}
+	cos_val[p->id] = 2;
 
-	std::sort(nodes.begin()+1, nodes.end(), node_cos_compare);
-
-	delete[] cos_val;
-
-	assert(nodes.front()->id==p->id);
+	std::sort(nodes.begin(), nodes.end(), node_cos_compare);
 
 	int M = 2; //Number of nodes in convex hull
 	
 	node_t * tmp;
 
+#if DEBUG
+	fprintf(stderr, "Sorted nodes. P: %i\n", p->id);
+	for(vector<node_t*>::iterator it=nodes.begin(); it!=nodes.end();++it) {
+		(*it)->print(false);
+      fprintf(stderr, " - cos: %f, p_dist: %i\n", cos_val[(*it)->id], p_dist[(*it)->id]);
+	}
+#endif
+
+
+	delete[] cos_val;
+
 	for(int i=2; i<nodes.size(); ++i) {
 		while (i < nodes.size() && ccw(nodes[M-2], nodes[M-1],nodes[i]) <= 0)  {
 			if(M == 2) {
+#if DEBUG
+				fprintf(stderr,"M==2, move %i -> %i\n", M-1, i);
+#endif
 				tmp = nodes[M-1];
 				nodes[M-1] = nodes[i];
 				nodes[i] = tmp;
 				++i;
 			} else {
 				--M;
+#if DEBUG
+				fprintf(stderr,"--M, M = %i\n", M);
+#endif
 			}
 		}
+		if(i >= nodes.size())
+			break;
 		++M;
+#if DEBUG
+		printf(stderr,"++M, move %i -> %i\n", M-1, i);
+#endif
 		tmp = nodes[M-1];
 		nodes[M-1] = nodes[i];
 		nodes[i] = tmp;
 	}
-	#if DEBUG
-		fprintf(stderr, "Convex hull: (%i", nodes[0]->id); 
-	#endif
-	for(int i=1; i<M; ++i) {
-		edges.push_back(new edge_t(nodes[i-1], nodes[i]));
-		#if DEBUG
-			fprintf(stderr, ", %i", nodes[i]->id); 
-		#endif
-	}
-
-	
-	edges.push_back(new edge_t(nodes[M-1], nodes[0]));
-
-	#if DEBUG
-		fprintf(stderr, ")\n");
-		print_edges();
-	#endif
 
 	return M;
 }
+
+#if GFX
+void render_loop(int iterations, int mark_nodes, int mark_edges) {
+	while(run && iterations!=0) {
+		--iterations;
+		render(nodes, edges, mark_nodes, mark_edges);
+		poll(&run);
+	}
+}
+#endif

@@ -1,5 +1,6 @@
 #ifndef NODE_T
 #define NODE_T
+
 struct node_t;
 
 struct edge_t {
@@ -26,7 +27,8 @@ struct node_t {
 	node_t(int _id);
 	edge_t * out_edge(edge_t * in);
    void change_edge(edge_t * org_edge, edge_t * new_edge);
-
+	
+	void print(bool newline=true);
 };
 
 #endif
